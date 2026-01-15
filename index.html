@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Instagram Mockup + Export PNG/JPG (file://) + Drag&Drop</title>
+  <title>Instagram Mockup + Export PNG/JPG + Drag&Drop</title>
 
   <style>
     :root{
@@ -160,10 +160,10 @@
       background-repeat: no-repeat;
     }
 
-    /* Dropdown: al desplegar (lista) -> fondo oscuro y texto NEGRO */
+    /* Dropdown: al desplegar (lista) -> fondo oscuro y texto blanco */
     .sb-select option{
-      background: #0f0f12; /* oscuro */
-      color: #fff;         /* texto blanco, como pediste */
+      background: #0f0f12;
+      color: #fff;
     }
 
     /* Switch */
@@ -590,7 +590,7 @@
           <div class="label">
             <span class="sb-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
-                <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 1 0 9.8 9.8z"/>
+                <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8z"/>
               </svg>
             </span>
             <span>Modo claro</span>
@@ -771,6 +771,9 @@
     </main>
   </div>
 
+  <!-- ✅ Librería estable para exportar DOM a PNG/JPG (mejor que foreignObject en Pages) -->
+  <script src="https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
+
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       const sbStatus = document.getElementById("sbStatus");
@@ -835,13 +838,12 @@
           metaHtml: '👥 Seguido por <strong>amigas</strong> y <strong>creadores</strong>'
         }
       };
-	  
-	  const PROFILE_AVATAR_FILE = {
-  klartsma: "klartsma.png",
-  piscinesvalles: "piscines.jpg",
-  vanilalavany: "vanila.jpg"
-};
 
+      const PROFILE_AVATAR_FILE = {
+        klartsma: "klartsma.png",
+        piscinesvalles: "piscines.jpg",
+        vanilalavany: "vanila.jpg"
+      };
 
       let loadedImages = []; // { nameLower, url, fileName }
 
@@ -952,14 +954,14 @@
       }
 
       function findBestImageUrlForProfile(profileKey){
-  if(!loadedImages.length) return null;
+        if(!loadedImages.length) return null;
 
-  const expected = (PROFILE_AVATAR_FILE[profileKey] || "").toLowerCase();
-  if(!expected) return null;
+        const expected = (PROFILE_AVATAR_FILE[profileKey] || "").toLowerCase();
+        if(!expected) return null;
 
-  const hit = loadedImages.find(x => x.nameLower === expected);
-  return hit ? hit.url : null;
-}
+        const hit = loadedImages.find(x => x.nameLower === expected);
+        return hit ? hit.url : null;
+      }
 
       function applyProfile(profileKey){
         const p = PROFILES[profileKey] || PROFILES.klartsma;
@@ -1026,7 +1028,7 @@
         initDnD();
       });
 
-      // Export
+      // Export helpers
       async function blobToDataURL(blob){
         return await new Promise((res, rej) => {
           const r = new FileReader();
@@ -1043,17 +1045,6 @@
           return await blobToDataURL(b);
         }
         throw new Error("Imagen no exportable. Usa Subir imágenes (blob:).");
-      }
-
-      function downloadBlob(blob, filename){
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1200);
       }
 
       async function buildExportClone(){
@@ -1119,6 +1110,7 @@
           }
         }
 
+        // ✅ Clave: convertir todas las IMG (blob:) a data: para evitar canvas "tainted"
         const imgs = Array.from(clone.querySelectorAll("img"));
         for(const im of imgs){
           const src = im.getAttribute("src") || "";
@@ -1149,62 +1141,52 @@
         return Math.max(1, scale);
       }
 
+      // ✅ Export REAL para GitHub Pages (sin foreignObject)
       async function exportAs(type){
         btnPng.disabled = btnJpg.disabled = true;
         setStatus(`Exportando ${type.toUpperCase()}…`, "loading");
 
         try{
+          if(!window.htmlToImage){
+            throw new Error("No se cargó html-to-image. Revisa el <script> CDN.");
+          }
+
           const { clone, width, height } = await buildExportClone();
 
-          const xhtml =
-            `<div xmlns="http://www.w3.org/1999/xhtml"
-                  style="width:${width}px;height:${height}px;margin:0;padding:0;">
-              ${clone.innerHTML}
-             </div>`;
-
-          const svg =
-            `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-                <foreignObject x="0" y="0" width="100%" height="100%">
-                  ${xhtml}
-                </foreignObject>
-             </svg>`;
-
-          const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-          const svgUrl = URL.createObjectURL(svgBlob);
-
-          const img = new Image();
-          img.decoding = "async";
-
-          await new Promise((res, rej) => {
-            img.onload = () => res();
-            img.onerror = () => rej(new Error("El navegador bloqueó foreignObject (pasa en Firefox/Safari)."));
-            img.src = svgUrl;
-          });
+          // Espera mínima para layout/imagenes
+          await new Promise(r => requestAnimationFrame(r));
 
           const scale = pickSafeScale(width, height);
-
-          const canvas = document.createElement("canvas");
-          canvas.width = Math.floor(width * scale);
-          canvas.height = Math.floor(height * scale);
-
-          const ctx = canvas.getContext("2d");
-          ctx.setTransform(scale, 0, 0, scale, 0, 0);
-          ctx.drawImage(img, 0, 0);
-
-          URL.revokeObjectURL(svgUrl);
-          clone.remove();
 
           const now = new Date();
           const pad = n => String(n).padStart(2, "0");
           const nameBase = `perfil-${profileSelect.value}-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 
-          const mime = type === "png" ? "image/png" : "image/jpeg";
-          const quality = type === "png" ? undefined : 0.95;
+          const opts = {
+            pixelRatio: scale,
+            backgroundColor: "transparent",
+            width,
+            height,
+            style: { transform: "none" }
+          };
 
-          const blob = await new Promise(res => canvas.toBlob(res, mime, quality));
-          if(!blob) throw new Error("El navegador bloqueó la exportación (canvas).");
+          let dataUrl;
+          if(type === "png"){
+            dataUrl = await htmlToImage.toPng(clone, opts);
+          }else{
+            dataUrl = await htmlToImage.toJpeg(clone, { ...opts, quality: 0.95 });
+          }
 
-          downloadBlob(blob, `${nameBase}.${type}`);
+          // Descargar
+          const a = document.createElement("a");
+          a.href = dataUrl;
+          a.download = `${nameBase}.${type}`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+
+          clone.remove();
+
           setStatus(`✅ Export ${type.toUpperCase()} listo (x${scale.toFixed(2)}).`, "ok");
         }catch(e){
           console.error(e);
