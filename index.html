@@ -1,0 +1,1244 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Instagram Mockup + Export PNG/JPG (file://) + Drag&Drop</title>
+
+  <style>
+    :root{
+      --text:#f5f5f5;
+
+      --page:#111;
+      --sidebar:#0c0c0d;
+      --sidebarLine:#1a1a1c;
+      --sidebarBtn:#17171a;
+      --sidebarBtnHover:#1f1f24;
+
+      --overlay:#0f0f12cc;
+      --overlayLine:#ffffff14;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: var(--page);
+      color: var(--text);
+      overflow:hidden;
+    }
+
+    .layout{
+      height:100vh;
+      width:100vw;
+      display:flex;
+      align-items:stretch;
+    }
+
+    /* Sidebar ancho */
+    .sidebar{
+      width: 276px;
+      flex: 0 0 276px;
+      background: var(--sidebar);
+      border-right: 1px solid var(--sidebarLine);
+      padding: 14px 12px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    /* Botón “simple” */
+    .sb-btn{
+      width:100%;
+      height: 52px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: var(--sidebarBtn);
+      color: var(--text);
+      border-radius: 14px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 0 12px;
+      font-size:14px;
+      font-weight:650;
+      box-shadow: 0 10px 25px rgba(0,0,0,.25);
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .sb-btn:hover{ background: var(--sidebarBtnHover); }
+    .sb-btn:active{ transform: translateY(1px); }
+    .sb-btn:disabled{ opacity:.6; cursor:not-allowed; }
+
+    .sb-icon{
+      width: 22px;
+      height: 22px;
+      flex: 0 0 22px;
+      display:grid;
+      place-items:center;
+    }
+    .sb-icon svg{
+      width: 22px;
+      height: 22px;
+      stroke: #fff;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: .95;
+    }
+
+    /* Fila con switch */
+    .sb-row{
+      width:100%;
+      height: 52px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: var(--sidebarBtn);
+      color: var(--text);
+      border-radius: 14px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 0 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,.25);
+      user-select:none;
+    }
+
+    .sb-row .label{
+      font-size:14px;
+      font-weight:650;
+      flex:1;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+    .sb-row .label span{
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    /* Fila con dropdown */
+    .sb-row.select{
+      height: auto;
+      padding: 10px 12px;
+      align-items:flex-start;
+    }
+    .sb-row.select .label{
+      align-items:flex-start;
+      padding-top: 2px;
+    }
+    .sb-row.select .control{
+      flex: 0 0 138px;
+      display:flex;
+      justify-content:flex-end;
+    }
+
+    /* Dropdown: cerrado (oscuro + texto blanco) */
+    .sb-select{
+      width: 138px;
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: #fff;
+      padding: 0 10px;
+      font-weight: 650;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image:
+        linear-gradient(45deg, transparent 50%, #fff 50%),
+        linear-gradient(135deg, #fff 50%, transparent 50%);
+      background-position:
+        calc(100% - 16px) 13px,
+        calc(100% - 11px) 13px;
+      background-size: 6px 6px, 6px 6px;
+      background-repeat: no-repeat;
+    }
+
+    /* Dropdown: al desplegar (lista) -> fondo oscuro y texto NEGRO */
+    .sb-select option{
+      background: #0f0f12; /* oscuro */
+      color: #fff;         /* texto blanco, como pediste */
+    }
+
+    /* Switch */
+    .switch{
+      position: relative;
+      width: 44px;
+      height: 26px;
+      flex: 0 0 44px;
+    }
+    .switch input{
+      position:absolute;
+      inset:0;
+      opacity:0;
+      cursor:pointer;
+    }
+    .slider{
+      position:absolute;
+      inset:0;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 999px;
+      transition: .18s ease;
+    }
+    .slider::after{
+      content:"";
+      position:absolute;
+      top: 50%;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      transform: translateY(-50%);
+      background:#fff;
+      border-radius:50%;
+      transition: .18s ease;
+      opacity:.95;
+    }
+    .switch input:checked + .slider{
+      background: rgba(0,149,246,.35);
+      border-color: rgba(0,149,246,.65);
+    }
+    .switch input:checked + .slider::after{
+      left: 21px;
+    }
+
+    .sb-status{
+      margin-top:6px;
+      font-size:12px;
+      color:#bbb;
+      min-height: 16px;
+      user-select:none;
+      line-height: 1.2;
+      white-space: pre-wrap;
+    }
+    .sb-status.ok{ color:#7dff9a; }
+    .sb-status.error{ color:#ff7d7d; }
+    .sb-status.loading{ color:#d7d7d7; }
+
+    /* Bloques para ordenar en el menú */
+    .sb-top{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .sb-mid{
+      margin-top:auto;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .sb-bottom{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    /* Main */
+    .main{
+      flex:1;
+      display:grid;
+      place-items:center;
+      padding: 22px 12px;
+      overflow:hidden;
+      position:relative;
+    }
+
+    /* Ayuda superpuesta */
+    .help-overlay{
+      position:absolute;
+      left: 18px;
+      bottom: 18px;
+      width: min(520px, 52vw);
+      padding: 12px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--overlayLine);
+      background: var(--overlay);
+      color:#c9c9c9;
+      font-size:12px;
+      line-height:1.35;
+      user-select:none;
+      backdrop-filter: blur(8px);
+      pointer-events:none;
+      z-index: 3;
+    }
+    .help-overlay b{ color:#f0f0f0; }
+
+    /* ====== PERFIL EXPORTABLE SIN MARCO ====== */
+    .export-area{
+      width: 390px;
+      background: transparent;
+      border-radius: 0;
+      padding: 0;
+      box-shadow: none;
+      position:relative;
+      z-index: 1;
+    }
+
+    /* =========================
+       IG THEME (solo mockup)
+       ========================= */
+    .app{
+      /* defaults: modo oscuro IG */
+      --ig-bg: #0b0b0c;
+      --ig-text: #f5f5f5;
+      --ig-muted: #b3b3b3;
+      --ig-line: #242427;
+      --ig-btn: #1c1c1f;
+      --ig-primary: #0095f6;
+
+      width: 390px;
+      background: var(--ig-bg);
+      color: var(--ig-text);
+      border-radius: 0;
+      overflow: hidden;
+      display:flex;
+      flex-direction:column;
+      height: 844px;
+    }
+
+    .ig-light{
+      --ig-bg: #ffffff;
+      --ig-text: #111111;
+      --ig-muted: #6a6a6a;
+      --ig-line: #e6e6e6;
+      --ig-btn: #efefef;
+      --ig-primary: #0095f6;
+    }
+
+    /* Topbar */
+    .topbar{
+      height:56px;
+      padding: 0 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      border-bottom:1px solid var(--ig-line);
+      background: linear-gradient(to bottom, rgba(255,255,255,.02), rgba(255,255,255,0));
+      flex: 0 0 auto;
+    }
+    .ig-light .topbar{
+      background: linear-gradient(to bottom, rgba(0,0,0,.02), rgba(0,0,0,0));
+    }
+
+    .topbar-left{ display:flex; align-items:center; gap:6px; font-weight:650; }
+    .lock{ font-size:16px; opacity:.9; }
+    .username{ font-size:16px; }
+    .chev{ opacity:.8; font-size:12px; margin-left:2px; }
+    .topbar-right{ display:flex; align-items:center; gap:10px; }
+    .icon-btn{
+      background: transparent;
+      border:0;
+      color:var(--ig-text);
+      font-size:22px;
+      line-height:1;
+      padding:6px 8px;
+      border-radius:10px;
+      cursor:pointer;
+    }
+    .icon-btn:active{ background: rgba(127,127,127,.12); }
+
+    /* Profile */
+    .profile{ padding: 14px 14px 10px; flex: 0 0 auto; }
+    .profile-row{ display:flex; gap:14px; align-items:center; }
+
+    .avatar-wrap{
+      position:relative;
+      width: 92px;
+      height: 92px;
+      flex: 0 0 92px;
+      display:grid;
+      place-items:center;
+    }
+    .avatar{
+      width: 78px;
+      height: 78px;
+      border-radius: 50%;
+      object-fit:cover;
+      border: 2px solid var(--ig-bg);
+      z-index:2;
+      background: #000;
+    }
+    /* Aro más delgado */
+    .story-ring{
+      position:absolute;
+      inset: 0;
+      border-radius:50%;
+      padding:2px;
+      background: conic-gradient(from 180deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5, #feda75);
+      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px));
+      mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px));
+      opacity:.95;
+    }
+
+    .stats{
+      flex:1;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      padding-right: 4px;
+    }
+    .stat{ text-align:center; flex:1; }
+    .stat-num{ font-weight:800; font-size:17px; }
+    .stat-label{ color:var(--ig-muted); font-size:12px; margin-top:2px; }
+
+    .bio{ margin-top:10px; line-height:1.25; }
+    .name{ font-weight:800; font-size:14px; }
+    .line{ color:var(--ig-text); font-size:14px; margin-top:2px; }
+    .link{
+      display:inline-block;
+      margin-top:4px;
+      color:#1d9bf0;
+      text-decoration:none;
+      font-size:14px;
+    }
+
+    .actions{ margin-top:12px; display:flex; gap:8px; }
+    .btn{
+      background: var(--ig-btn);
+      border:1px solid rgba(255,255,255,.06);
+      color: var(--ig-text);
+      padding: 9px 10px;
+      border-radius: 10px;
+      font-weight:750;
+      font-size:14px;
+      flex:1;
+      cursor:pointer;
+    }
+    .ig-light .btn{ border-color: rgba(0,0,0,.06); }
+    .btn.icon{ flex:0 0 44px; padding: 9px 0; }
+    .btn.primary{ background: var(--ig-primary); border-color: transparent; color: #fff; }
+    .btn:active{ transform: translateY(1px); }
+
+    .meta{ margin-top:10px; }
+    .meta-pill{ display:inline-block; font-size:12px; color: var(--ig-muted); }
+    .meta-pill strong{ color: var(--ig-text); font-weight:750; }
+
+    /* Highlights */
+    .highlights{
+      display:flex;
+      gap:12px;
+      padding: 10px 14px 14px;
+      overflow:auto;
+      border-bottom:1px solid var(--ig-line);
+      scrollbar-width:none;
+      flex: 0 0 auto;
+    }
+    .highlights::-webkit-scrollbar{ display:none; }
+
+    .highlight{ width:72px; flex: 0 0 72px; text-align:center; }
+    .highlight-thumb{
+      width: 62px;
+      height: 62px;
+      margin: 0 auto;
+      border-radius:50%;
+      background: rgba(127,127,127,.14);
+      border:1px solid rgba(255,255,255,.08);
+      display:grid;
+      place-items:center;
+      overflow:hidden;
+    }
+    .ig-light .highlight-thumb{
+      border-color: rgba(0,0,0,.08);
+      background: rgba(0,0,0,.04);
+    }
+    .highlight-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .highlight-label{
+      margin-top:6px;
+      font-size:12px;
+      color: var(--ig-text);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .highlight.add .highlight-thumb{ background: transparent; border:1px solid rgba(255,255,255,.16); }
+    .ig-light .highlight.add .highlight-thumb{ border-color: rgba(0,0,0,.16); }
+    .highlight-thumb.plus{ font-size:26px; color: var(--ig-text); font-weight:700; }
+
+    /* Tabs */
+    .tabs{
+      display:flex;
+      align-items:center;
+      justify-content:space-around;
+      height:44px;
+      border-bottom:1px solid var(--ig-line);
+      background: rgba(255,255,255,.01);
+      flex: 0 0 auto;
+    }
+    .ig-light .tabs{ background: rgba(0,0,0,.01); }
+    .tab{
+      flex:1;
+      height:44px;
+      border:0;
+      background: transparent;
+      color: var(--ig-muted);
+      font-size:18px;
+      cursor:pointer;
+    }
+    .tab.active{ color: var(--ig-text); border-bottom:2px solid var(--ig-text); }
+    .tab:active{ background: rgba(127,127,127,.12); }
+
+    /* Grid */
+    .grid{
+      flex: 1 1 auto;
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:2px;
+      background: var(--ig-line);
+      overflow:auto;
+      scrollbar-width:none;
+      min-height: 0;
+    }
+    .grid::-webkit-scrollbar{ display:none; }
+
+    .cell{
+      background:#000;
+      aspect-ratio: 4 / 5;
+      display:block;
+      user-select:none;
+      cursor: grab;
+      touch-action: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ig-light .cell{ background:#fff; }
+    .cell:active{ cursor: grabbing; }
+    .cell img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+      pointer-events:none;
+      -webkit-user-drag:none;
+      background:#000;
+    }
+
+    .cell.dragging{ opacity:.35; filter: grayscale(1); }
+    .cell.drop-target{ outline: 2px solid rgba(255,255,255,.18); outline-offset: -2px; }
+
+    /* Bottom nav */
+    .bottomnav{
+      height:56px;
+      border-top:1px solid var(--ig-line);
+      display:flex;
+      align-items:center;
+      justify-content:space-around;
+      background: rgba(0,0,0,.16);
+      flex: 0 0 auto;
+    }
+    .ig-light .bottomnav{ background: rgba(0,0,0,.03); }
+
+    .navbtn{
+      width:44px;
+      height:44px;
+      border:0;
+      background: transparent;
+      color:var(--ig-text);
+      font-size:20px;
+      border-radius:12px;
+      cursor:pointer;
+    }
+    .navbtn:active{ background: rgba(127,127,127,.12); }
+    .profile-dot{
+      padding:0;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.2);
+    }
+    .ig-light .profile-dot{ border-color: rgba(0,0,0,.2); }
+    .profile-dot img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+    @media (max-width: 640px){
+      .sidebar{ width: 220px; flex-basis:220px; }
+      .export-area, .app{ width: 360px; }
+      .help-overlay{ left:12px; bottom:12px; width: min(520px, 66vw); }
+      .sb-row.select .control{ flex-basis: 120px; }
+      .sb-select{ width: 120px; }
+    }
+    @media (max-width: 520px){
+      .main{ padding: 12px 10px; }
+      .help-overlay{ display:none; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="layout">
+
+    <aside class="sidebar">
+      <!-- ARRIBA: switches -->
+      <div class="sb-top">
+        <!-- Switch destacados -->
+        <div class="sb-row">
+          <div class="label">
+            <span class="sb-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 3l3 7h7l-5.5 4.2L18.5 21 12 16.8 5.5 21l2-6.8L2 10h7z"/></svg>
+            </span>
+            <span>Destacados</span>
+          </div>
+          <label class="switch" title="Mostrar/Ocultar destacados">
+            <input id="swHighlights" type="checkbox" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Switch tema IG -->
+        <div class="sb-row">
+          <div class="label">
+            <span class="sb-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 1 0 9.8 9.8z"/>
+              </svg>
+            </span>
+            <span>Modo claro</span>
+          </div>
+          <label class="switch" title="Modo claro/oscuro de Instagram">
+            <input id="swTheme" type="checkbox">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- ABAJO (antes de export): dropdown encima y “cargar” debajo -->
+      <div class="sb-mid">
+        <!-- Dropdown perfiles -->
+        <div class="sb-row select">
+          <div class="label">
+            <span class="sb-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M20 21a8 8 0 0 0-16 0"/>
+                <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4z"/>
+              </svg>
+            </span>
+            <span>Perfil</span>
+          </div>
+          <div class="control">
+            <select id="profileSelect" class="sb-select" aria-label="Seleccionar perfil">
+              <option value="klartsma">Klartsma</option>
+              <option value="piscinesvalles">Piscines Valles</option>
+              <option value="vanilalavany">Vanila Lavany</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Cargar carpeta (debajo del dropdown y encima de export) -->
+        <button id="btnLoad" class="sb-btn" type="button">
+          <span class="sb-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          </span>
+          <span>Subir imágenes</span>
+        </button>
+
+        <div id="sbStatus" class="sb-status"></div>
+      </div>
+
+      <!-- Export abajo del todo -->
+      <div class="sb-bottom">
+        <button id="btnPng" class="sb-btn" type="button">
+          <span class="sb-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 5h16v14H4z"/>
+              <path d="M8 11l2 2 3-4 5 7"/>
+              <path d="M8 9h.01"/>
+            </svg>
+          </span>
+          <span>Export PNG</span>
+        </button>
+        <button id="btnJpg" class="sb-btn" type="button">
+          <span class="sb-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 7h4l2-2h4l2 2h4v14H4z"/>
+              <path d="M12 18a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
+            </svg>
+          </span>
+          <span>Export JPG</span>
+        </button>
+      </div>
+
+      <input id="folderPicker" type="file" webkitdirectory directory multiple hidden />
+    </aside>
+
+    <main class="main">
+      <div class="help-overlay">
+        ✅ Carga la carpeta con “Subir imágenes” para usar imágenes como <b>blob:</b> (ideal en file://).<br><br>
+        👤 Selecciona perfil en el dropdown para cambiar avatar + textos.<br><br>
+        ↕️ Reordena publicaciones con <b>drag & drop</b>.<br><br>
+        🖼️ Exporta solo el perfil completo (hasta la última publicación), sin marco.
+      </div>
+
+      <!-- Exportable -->
+      <div id="exportArea" class="export-area">
+        <div id="app" class="app">
+          <header class="topbar">
+            <div class="topbar-left">
+              <span class="lock">🔒</span>
+              <span class="username" id="uiUsername">tu_usuario</span>
+              <span class="chev">▾</span>
+            </div>
+            <div class="topbar-right">
+              <button class="icon-btn" type="button">＋</button>
+              <button class="icon-btn" type="button">☰</button>
+            </div>
+          </header>
+
+          <section class="profile">
+            <div class="profile-row">
+              <div class="avatar-wrap">
+                <img class="avatar" id="uiAvatar" alt="Avatar" />
+                <span class="story-ring" aria-hidden="true"></span>
+              </div>
+
+              <div class="stats">
+                <div class="stat">
+                  <div class="stat-num" id="uiPostsCount">0</div>
+                  <div class="stat-label">publicaciones</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-num" id="uiFollowers">24,3k</div>
+                  <div class="stat-label">seguidores</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-num" id="uiFollowing">532</div>
+                  <div class="stat-label">seguidos</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bio">
+              <div class="name" id="uiName">Nombre Apellido</div>
+              <div class="line" id="uiBio1">Creador/a de contenido • 📍Madrid</div>
+              <div class="line" id="uiBio2">✨ Bio de ejemplo con estilo Instagram</div>
+              <a class="link" id="uiLink" href="#" onclick="return false;">tusitio.com</a>
+            </div>
+
+            <div class="actions">
+              <button class="btn primary" type="button">Seguir</button>
+              <button class="btn" type="button">Mensaje</button>
+              <button class="btn" type="button">Correo</button>
+              <button class="btn icon" type="button">▾</button>
+            </div>
+
+            <div class="meta">
+              <span class="meta-pill" id="uiMeta">👥 Seguido por <strong>alguien</strong> y <strong>otras personas</strong></span>
+            </div>
+          </section>
+
+          <section id="highlights" class="highlights">
+            <div class="highlight">
+              <div class="highlight-thumb"><img id="hl1" alt="Destacado 1"></div>
+              <div class="highlight-label">Viajes</div>
+            </div>
+            <div class="highlight">
+              <div class="highlight-thumb"><img id="hl2" alt="Destacado 2"></div>
+              <div class="highlight-label">Work</div>
+            </div>
+            <div class="highlight">
+              <div class="highlight-thumb"><img id="hl3" alt="Destacado 3"></div>
+              <div class="highlight-label">Food</div>
+            </div>
+            <div class="highlight">
+              <div class="highlight-thumb"><img id="hl4" alt="Destacado 4"></div>
+              <div class="highlight-label">📌 Tips</div>
+            </div>
+            <div class="highlight add">
+              <div class="highlight-thumb plus">＋</div>
+              <div class="highlight-label">Nuevo</div>
+            </div>
+          </section>
+
+          <nav class="tabs">
+            <button class="tab active" type="button">▦</button>
+            <button class="tab" type="button">▶︎</button>
+            <button class="tab" type="button">👤</button>
+          </nav>
+
+          <main id="grid" class="grid"></main>
+
+          <footer class="bottomnav">
+            <button class="navbtn" type="button">⌂</button>
+            <button class="navbtn" type="button">🔍</button>
+            <button class="navbtn" type="button">▶︎</button>
+            <button class="navbtn" type="button">🛍️</button>
+            <button class="navbtn profile-dot" type="button">
+              <img id="uiAvatarSmall" alt="Tu perfil" />
+            </button>
+          </footer>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const sbStatus = document.getElementById("sbStatus");
+      const btnLoad = document.getElementById("btnLoad");
+      const btnPng = document.getElementById("btnPng");
+      const btnJpg = document.getElementById("btnJpg");
+      const folderPicker = document.getElementById("folderPicker");
+
+      const exportArea = document.getElementById("exportArea");
+      const app = document.getElementById("app");
+      const grid = document.getElementById("grid");
+      const highlights = document.getElementById("highlights");
+
+      const swHighlights = document.getElementById("swHighlights");
+      const swTheme = document.getElementById("swTheme");
+      const profileSelect = document.getElementById("profileSelect");
+
+      const uiUsername = document.getElementById("uiUsername");
+      const uiName = document.getElementById("uiName");
+      const uiBio1 = document.getElementById("uiBio1");
+      const uiBio2 = document.getElementById("uiBio2");
+      const uiLink = document.getElementById("uiLink");
+      const uiMeta = document.getElementById("uiMeta");
+
+      const uiAvatar = document.getElementById("uiAvatar");
+      const uiAvatarSmall = document.getElementById("uiAvatarSmall");
+      const uiPostsCount = document.getElementById("uiPostsCount");
+
+      const hlEls = [
+        document.getElementById("hl1"),
+        document.getElementById("hl2"),
+        document.getElementById("hl3"),
+        document.getElementById("hl4"),
+      ];
+
+      const PROFILES = {
+        klartsma: {
+          username: "Klartsma",
+          name: "Klartsma",
+          bio1: "Diseño • Branding • Visual",
+          bio2: "✨ Proyectos, ideas y procesos",
+          linkText: "klartsma.com",
+          linkHref: "#",
+          metaHtml: '👥 Seguido por <strong>alguien</strong> y <strong>otras personas</strong>'
+        },
+        piscinesvalles: {
+          username: "piscinesvalles",
+          name: "Piscines Vallès",
+          bio1: "Piscinas • Mantenimiento • Obras",
+          bio2: "📍 Vallès | Presupuestos y reformas",
+          linkText: "piscinesvalles.com",
+          linkHref: "#",
+          metaHtml: '👥 Seguido por <strong>clientes</strong> y <strong>vecinos</strong>'
+        },
+        vanilalavany: {
+          username: "vanilalavany",
+          name: "Vànila Lavany",
+          bio1: "Beauty • Lifestyle • ✨",
+          bio2: "🧴 Rutinas, looks y reseñas",
+          linkText: "vanilalavany.com",
+          linkHref: "#",
+          metaHtml: '👥 Seguido por <strong>amigas</strong> y <strong>creadores</strong>'
+        }
+      };
+	  
+	  const PROFILE_AVATAR_FILE = {
+  klartsma: "klartsma.png",
+  piscinesvalles: "piscines.jpg",
+  vanilalavany: "vanila.jpg"
+};
+
+
+      let loadedImages = []; // { nameLower, url, fileName }
+
+      function setStatus(msg, type=""){
+        sbStatus.textContent = msg;
+        sbStatus.className = `sb-status ${type}`.trim();
+        if(!msg) sbStatus.className = "sb-status";
+      }
+
+      function setHighlightsVisible(visible){
+        highlights.style.display = visible ? "" : "none";
+        swHighlights.checked = visible;
+      }
+      swHighlights.addEventListener("change", () => {
+        setHighlightsVisible(swHighlights.checked);
+      });
+
+      function setIGTheme(light){
+        app.classList.toggle("ig-light", !!light);
+        swTheme.checked = !!light;
+      }
+      swTheme.addEventListener("change", () => {
+        setIGTheme(swTheme.checked);
+      });
+
+      function clearGrid(){ grid.innerHTML = ""; }
+
+      function makeCell(src, alt){
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.draggable = true;
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = alt || "Publicación";
+        img.loading = "lazy";
+        img.decoding = "async";
+        img.draggable = false;
+        cell.appendChild(img);
+        return cell;
+      }
+
+      function addPost(src, alt){
+        grid.appendChild(makeCell(src, alt));
+      }
+
+      function makePlaceholder(i){
+        const w = 800, h = 1000;
+        const c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        const ctx = c.getContext("2d");
+        const a = (i * 37) % 360;
+        const b = (a + 110) % 360;
+        const g = ctx.createLinearGradient(0,0,w,h);
+        g.addColorStop(0, `hsl(${a} 70% 45%)`);
+        g.addColorStop(1, `hsl(${b} 70% 35%)`);
+        ctx.fillStyle = g;
+        ctx.fillRect(0,0,w,h);
+        ctx.fillStyle = "rgba(0,0,0,.35)";
+        ctx.fillRect(0, h-140, w, 140);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 64px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+        ctx.fillText(`POST ${i+1}`, 48, h-64);
+        return c.toDataURL("image/jpeg", 0.92);
+      }
+
+      // DnD HTML5
+      let dragEl = null;
+      function clearDnDClasses(){
+        [...grid.children].forEach(el => el.classList.remove("drop-target"));
+      }
+      function initDnD(){
+        [...grid.children].forEach(el => { el.draggable = true; });
+
+        grid.ondragstart = (e) => {
+          const cell = e.target.closest(".cell");
+          if(!cell) return;
+          dragEl = cell;
+          cell.classList.add("dragging");
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", "drag");
+        };
+
+        grid.ondragover = (e) => {
+          if(!dragEl) return;
+          e.preventDefault();
+          const over = e.target.closest(".cell");
+          if(!over || over === dragEl) return;
+
+          clearDnDClasses();
+          over.classList.add("drop-target");
+
+          const rect = over.getBoundingClientRect();
+          const before = (e.clientY - rect.top) < (rect.height / 2);
+
+          if(before){
+            if(over.previousSibling !== dragEl) grid.insertBefore(dragEl, over);
+          }else{
+            if(over.nextSibling !== dragEl) grid.insertBefore(dragEl, over.nextSibling);
+          }
+        };
+
+        grid.ondrop = (e) => { e.preventDefault(); clearDnDClasses(); };
+        grid.ondragend = () => {
+          if(dragEl) dragEl.classList.remove("dragging");
+          dragEl = null;
+          clearDnDClasses();
+        };
+      }
+
+      function findBestImageUrlForProfile(profileKey){
+  if(!loadedImages.length) return null;
+
+  const expected = (PROFILE_AVATAR_FILE[profileKey] || "").toLowerCase();
+  if(!expected) return null;
+
+  const hit = loadedImages.find(x => x.nameLower === expected);
+  return hit ? hit.url : null;
+}
+
+      function applyProfile(profileKey){
+        const p = PROFILES[profileKey] || PROFILES.klartsma;
+        uiUsername.textContent = p.username;
+        uiName.textContent = p.name;
+        uiBio1.textContent = p.bio1;
+        uiBio2.textContent = p.bio2;
+        uiLink.textContent = p.linkText;
+        uiLink.href = p.linkHref || "#";
+        uiLink.onclick = () => false;
+        uiMeta.innerHTML = p.metaHtml;
+
+        const url = findBestImageUrlForProfile(profileKey);
+        if(url){
+          uiAvatar.src = url;
+          uiAvatarSmall.src = url;
+        }else{
+          const idx = profileKey === "klartsma" ? 7 : profileKey === "piscinesvalles" ? 17 : 27;
+          const ph = makePlaceholder(idx);
+          uiAvatar.src = ph;
+          uiAvatarSmall.src = ph;
+        }
+      }
+
+      profileSelect.addEventListener("change", () => applyProfile(profileSelect.value));
+
+      function isImageFileName(name){
+        return /\.(png|jpe?g|webp|gif|bmp|avif)$/i.test(name || "");
+      }
+
+      btnLoad.addEventListener("click", () => {
+        folderPicker.value = "";
+        folderPicker.click();
+      });
+
+      folderPicker.addEventListener("change", async () => {
+        const files = Array.from(folderPicker.files || []);
+        const images = files.filter(f => isImageFileName(f.name));
+        if(!images.length){
+          setStatus("❌ No hay imágenes en la carpeta seleccionada.", "error");
+          return;
+        }
+
+        images.sort((a,b) =>
+          (a.webkitRelativePath || a.name).localeCompare(b.webkitRelativePath || b.name, undefined, { numeric:true })
+        );
+
+        loadedImages = images.map(f => {
+          const url = URL.createObjectURL(f);
+          return { fileName: f.name, nameLower: f.name.toLowerCase(), url };
+        });
+
+        clearGrid();
+        loadedImages.forEach((x, i) => addPost(x.url, x.fileName || `Post ${i+1}`));
+        uiPostsCount.textContent = String(grid.children.length);
+
+        for(let i=0;i<4;i++){
+          hlEls[i].src = loadedImages[i] ? loadedImages[i].url : makePlaceholder(40+i);
+        }
+
+        applyProfile(profileSelect.value);
+
+        setStatus(`✅ ${grid.children.length} publicaciones cargadas.`, "ok");
+        initDnD();
+      });
+
+      // Export
+      async function blobToDataURL(blob){
+        return await new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result);
+          r.onerror = rej;
+          r.readAsDataURL(blob);
+        });
+      }
+
+      async function imgSrcToDataUrl(src){
+        if(/^data:/i.test(src)) return src;
+        if(/^blob:/i.test(src)){
+          const b = await fetch(src).then(r => r.blob());
+          return await blobToDataURL(b);
+        }
+        throw new Error("Imagen no exportable. Usa Subir imágenes (blob:).");
+      }
+
+      function downloadBlob(blob, filename){
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1200);
+      }
+
+      async function buildExportClone(){
+        const prevAppHeight = app.style.height;
+        const prevAppOverflow = app.style.overflow;
+        const prevGridOverflow = grid.style.overflow;
+
+        app.style.height = "auto";
+        app.style.overflow = "visible";
+        grid.style.overflow = "visible";
+
+        await new Promise(r => requestAnimationFrame(r));
+
+        const clone = exportArea.cloneNode(true);
+        clone.id = "exportClone";
+        clone.style.position = "fixed";
+        clone.style.left = "-99999px";
+        clone.style.top = "0";
+        clone.style.background = "transparent";
+        clone.style.width = getComputedStyle(exportArea).width;
+
+        document.body.appendChild(clone);
+
+        const origNodes = exportArea.querySelectorAll("*");
+        const cloneNodes = clone.querySelectorAll("*");
+        for(let i=0;i<cloneNodes.length;i++){
+          const o = origNodes[i];
+          const c = cloneNodes[i];
+          if(!o || !c) continue;
+          const cs = getComputedStyle(o);
+          c.style.cssText = "";
+          c.style.boxSizing = cs.boxSizing;
+          c.style.display = cs.display;
+          c.style.position = cs.position;
+          c.style.flex = cs.flex;
+          c.style.flexDirection = cs.flexDirection;
+          c.style.justifyContent = cs.justifyContent;
+          c.style.alignItems = cs.alignItems;
+          c.style.gap = cs.gap;
+          c.style.width = cs.width;
+          c.style.height = cs.height;
+          c.style.minHeight = cs.minHeight;
+          c.style.maxHeight = cs.maxHeight;
+          c.style.padding = cs.padding;
+          c.style.margin = cs.margin;
+          c.style.border = cs.border;
+          c.style.borderRadius = cs.borderRadius;
+          c.style.background = cs.background;
+          c.style.backgroundColor = cs.backgroundColor;
+          c.style.color = cs.color;
+          c.style.fontFamily = cs.fontFamily;
+          c.style.fontSize = cs.fontSize;
+          c.style.fontWeight = cs.fontWeight;
+          c.style.lineHeight = cs.lineHeight;
+          c.style.textAlign = cs.textAlign;
+          c.style.overflow = cs.overflow;
+          c.style.overflowX = cs.overflowX;
+          c.style.overflowY = cs.overflowY;
+          c.style.boxShadow = cs.boxShadow;
+          if(c.tagName === "IMG"){
+            c.style.objectFit = cs.objectFit;
+            c.style.display = "block";
+          }
+        }
+
+        const imgs = Array.from(clone.querySelectorAll("img"));
+        for(const im of imgs){
+          const src = im.getAttribute("src") || "";
+          try{
+            im.setAttribute("src", await imgSrcToDataUrl(src));
+          }catch{
+            im.setAttribute("src", makePlaceholder(123));
+          }
+        }
+
+        const w = Math.ceil(clone.getBoundingClientRect().width);
+        const h = Math.ceil(clone.scrollHeight);
+
+        app.style.height = prevAppHeight;
+        app.style.overflow = prevAppOverflow;
+        grid.style.overflow = prevGridOverflow;
+
+        return { clone, width: w, height: h };
+      }
+
+      function pickSafeScale(w, h){
+        const MAX_PIXELS = 28_000_000;
+        const base = w * h;
+        let scale = 2;
+        while((base * scale * scale) > MAX_PIXELS && scale > 1){
+          scale -= 0.25;
+        }
+        return Math.max(1, scale);
+      }
+
+      async function exportAs(type){
+        btnPng.disabled = btnJpg.disabled = true;
+        setStatus(`Exportando ${type.toUpperCase()}…`, "loading");
+
+        try{
+          const { clone, width, height } = await buildExportClone();
+
+          const xhtml =
+            `<div xmlns="http://www.w3.org/1999/xhtml"
+                  style="width:${width}px;height:${height}px;margin:0;padding:0;">
+              ${clone.innerHTML}
+             </div>`;
+
+          const svg =
+            `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+                <foreignObject x="0" y="0" width="100%" height="100%">
+                  ${xhtml}
+                </foreignObject>
+             </svg>`;
+
+          const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+          const svgUrl = URL.createObjectURL(svgBlob);
+
+          const img = new Image();
+          img.decoding = "async";
+
+          await new Promise((res, rej) => {
+            img.onload = () => res();
+            img.onerror = () => rej(new Error("El navegador bloqueó foreignObject (pasa en Firefox/Safari)."));
+            img.src = svgUrl;
+          });
+
+          const scale = pickSafeScale(width, height);
+
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.floor(width * scale);
+          canvas.height = Math.floor(height * scale);
+
+          const ctx = canvas.getContext("2d");
+          ctx.setTransform(scale, 0, 0, scale, 0, 0);
+          ctx.drawImage(img, 0, 0);
+
+          URL.revokeObjectURL(svgUrl);
+          clone.remove();
+
+          const now = new Date();
+          const pad = n => String(n).padStart(2, "0");
+          const nameBase = `perfil-${profileSelect.value}-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+
+          const mime = type === "png" ? "image/png" : "image/jpeg";
+          const quality = type === "png" ? undefined : 0.95;
+
+          const blob = await new Promise(res => canvas.toBlob(res, mime, quality));
+          if(!blob) throw new Error("El navegador bloqueó la exportación (canvas).");
+
+          downloadBlob(blob, `${nameBase}.${type}`);
+          setStatus(`✅ Export ${type.toUpperCase()} listo (x${scale.toFixed(2)}).`, "ok");
+        }catch(e){
+          console.error(e);
+          setStatus(
+            `❌ No se pudo exportar.\n${e.message || ""}\nSugerencia: usa Subir imágenes (blob:).`,
+            "error"
+          );
+        }finally{
+          btnPng.disabled = btnJpg.disabled = false;
+          setTimeout(() => setStatus(""), 4200);
+        }
+      }
+
+      btnPng.addEventListener("click", () => exportAs("png"));
+      btnJpg.addEventListener("click", () => exportAs("jpg"));
+
+      // BOOT
+      function loadFallback(){
+        clearGrid();
+        for(let i=0;i<12;i++) addPost(makePlaceholder(i), `Post ${i+1}`);
+        uiPostsCount.textContent = String(grid.children.length);
+        hlEls.forEach((el, idx) => el.src = makePlaceholder(30+idx));
+        initDnD();
+      }
+
+      setHighlightsVisible(true);
+      setIGTheme(false);
+      loadFallback();
+
+      profileSelect.value = "klartsma";
+      applyProfile("klartsma");
+
+      setStatus("ℹ️ Subir imágenes: selecciona una carpeta con fotos para mejorar avatares y export.", "");
+    });
+  </script>
+</body>
+</html>
