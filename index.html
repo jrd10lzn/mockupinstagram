@@ -624,7 +624,7 @@
           </div>
         </div>
 
-        <!-- Cargar carpeta (debajo del dropdown y encima de export) -->
+        <!-- Cargar carpeta -->
         <button id="btnLoad" class="sb-btn" type="button">
           <span class="sb-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
@@ -771,8 +771,8 @@
     </main>
   </div>
 
-  <!-- ✅ Librería estable para exportar DOM a PNG/JPG (mejor que foreignObject en Pages) -->
-  <script src="https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
+  <!-- ✅ html2canvas (mejor compatibilidad que foreignObject en GitHub Pages / Safari) -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -1044,7 +1044,30 @@
           const b = await fetch(src).then(r => r.blob());
           return await blobToDataURL(b);
         }
+        // Si algún src fuese http(s), en Pages podría "taint" el canvas
         throw new Error("Imagen no exportable. Usa Subir imágenes (blob:).");
+      }
+
+      function downloadBlob(blob, filename){
+        const url = URL.createObjectURL(blob);
+
+        // iOS Safari: no siempre funciona a.download -> abre en pestaña
+        const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
+          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+        if(isIOS){
+          window.open(url, "_blank", "noopener,noreferrer");
+          setTimeout(() => URL.revokeObjectURL(url), 8000);
+          return;
+        }
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1200);
       }
 
       async function buildExportClone(){
@@ -1068,6 +1091,7 @@
 
         document.body.appendChild(clone);
 
+        // Copiar estilos computados (tu enfoque original)
         const origNodes = exportArea.querySelectorAll("*");
         const cloneNodes = clone.querySelectorAll("*");
         for(let i=0;i<cloneNodes.length;i++){
@@ -1110,7 +1134,7 @@
           }
         }
 
-        // ✅ Clave: convertir todas las IMG (blob:) a data: para evitar canvas "tainted"
+        // Convertir IMG blob: -> data: (evita canvas tainted)
         const imgs = Array.from(clone.querySelectorAll("img"));
         for(const im of imgs){
           const src = im.getAttribute("src") || "";
@@ -1121,9 +1145,11 @@
           }
         }
 
+        // Medidas finales
         const w = Math.ceil(clone.getBoundingClientRect().width);
         const h = Math.ceil(clone.scrollHeight);
 
+        // Restaurar
         app.style.height = prevAppHeight;
         app.style.overflow = prevAppOverflow;
         grid.style.overflow = prevGridOverflow;
@@ -1141,59 +1167,54 @@
         return Math.max(1, scale);
       }
 
-      // ✅ Export REAL para GitHub Pages (sin foreignObject)
       async function exportAs(type){
         btnPng.disabled = btnJpg.disabled = true;
         setStatus(`Exportando ${type.toUpperCase()}…`, "loading");
 
         try{
-          if(!window.htmlToImage){
-            throw new Error("No se cargó html-to-image. Revisa el <script> CDN.");
+          if(!window.html2canvas){
+            throw new Error("No se cargó html2canvas. Revisa el <script> CDN.");
           }
 
           const { clone, width, height } = await buildExportClone();
 
-          // Espera mínima para layout/imagenes
+          // Asegurar layout
+          clone.style.width = `${width}px`;
           await new Promise(r => requestAnimationFrame(r));
 
           const scale = pickSafeScale(width, height);
+
+          const canvas = await html2canvas(clone, {
+            backgroundColor: null,
+            scale,
+            useCORS: true,
+            allowTaint: false,
+            logging: false,
+            width,
+            height,
+            windowWidth: width,
+            windowHeight: height,
+            scrollX: 0,
+            scrollY: 0
+          });
+
+          clone.remove();
 
           const now = new Date();
           const pad = n => String(n).padStart(2, "0");
           const nameBase = `perfil-${profileSelect.value}-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 
-          const opts = {
-            pixelRatio: scale,
-            backgroundColor: "transparent",
-            width,
-            height,
-            style: { transform: "none" }
-          };
+          const mime = type === "png" ? "image/png" : "image/jpeg";
+          const quality = type === "png" ? undefined : 0.95;
 
-          let dataUrl;
-          if(type === "png"){
-            dataUrl = await htmlToImage.toPng(clone, opts);
-          }else{
-            dataUrl = await htmlToImage.toJpeg(clone, { ...opts, quality: 0.95 });
-          }
+          const blob = await new Promise(res => canvas.toBlob(res, mime, quality));
+          if(!blob) throw new Error("No se pudo generar el archivo (canvas.toBlob devolvió null).");
 
-          // Descargar
-          const a = document.createElement("a");
-          a.href = dataUrl;
-          a.download = `${nameBase}.${type}`;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-
-          clone.remove();
-
+          downloadBlob(blob, `${nameBase}.${type}`);
           setStatus(`✅ Export ${type.toUpperCase()} listo (x${scale.toFixed(2)}).`, "ok");
         }catch(e){
           console.error(e);
-          setStatus(
-            `❌ No se pudo exportar.\n${e.message || ""}\nSugerencia: usa Subir imágenes (blob:).`,
-            "error"
-          );
+          setStatus(`❌ No se pudo exportar.\n${e.message || ""}`, "error");
         }finally{
           btnPng.disabled = btnJpg.disabled = false;
           setTimeout(() => setStatus(""), 4200);
